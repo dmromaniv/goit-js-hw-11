@@ -1,41 +1,109 @@
-const debounce = require('lodash/debounce');
 import Notiflix from 'notiflix';
+import SimpleLightbox from 'simplelightbox';
+import 'simplelightbox/dist/simple-lightbox.min.css';
 
-import './css/styles.css';
-import { fetchCountries } from './api/fetchCountries';
-import { addCountriesList, addCountryInfo } from './layout/newMarkup';
+import { getImages } from './api/getImages';
+import { addImages } from './layout/addMarkup';
 
-const DEBOUNCE_DELAY = 300;
+const galleryRef = document.querySelector('.gallery');
+const searchFormRef = document.querySelector('.search-form');
+const loadBtnRef = document.querySelector('.load-more');
 
-const searchBoxRef = document.querySelector('#search-box');
-const countriesListRef = document.querySelector('.country-list');
-const countryInfoRef = document.querySelector('.country-info');
+let gallery = new SimpleLightbox('.gallery a');
+let observer = new IntersectionObserver(callback, {
+  root: null,
+  rootMargin: '0px',
+  threshold: 0.2,
+});
 
-searchBoxRef.addEventListener(
-  'input',
-  debounce(event => {
-    countriesListRef.innerHTML = '';
-    countryInfoRef.innerHTML = '';
+let searchQuery = null;
+let currentPage = 1;
 
-    const countryName = event.target.value.trim();
+// !add test for last element
+async function callback(entries, observer) {
+  if (entries[0].isIntersecting) {
+    observer.unobserve(entries[0].target);
+    await renderImages(galleryRef, searchQuery, ++currentPage);
+  }
+  observer.observe(galleryRef.lastElementChild);
+}
 
-    if (countryName) {
-      fetchCountries(countryName)
-        .then(response => {
-          if (response.length > 10) {
-            Notiflix.Notify.info(
-              'Too many matches found. Please enter a more specific name.'
-            );
-          } else if (response.length == 1) {
-            addCountryInfo(response, countryInfoRef);
-          } else {
-            addCountriesList(response, countriesListRef);
-          }
-        })
-        .catch(err => {
-          Notiflix.Notify.failure('Oops, there is no country with that name');
-          console.log(err);
-        });
+searchFormRef.addEventListener('submit', async e => {
+  e.preventDefault();
+  loadBtnRef.classList.add('hidden');
+  currentPage = 1;
+  galleryRef.innerHTML = '';
+  searchQuery = getInputData(e.currentTarget);
+  if (searchQuery) {
+    await renderImages(galleryRef, searchQuery, currentPage);
+    gallery.refresh();
+
+    observer.observe(galleryRef.lastElementChild);
+
+    loadBtnRef.classList.remove('hidden');
+    searchFormRef.reset();
+  }
+});
+
+loadBtnRef.addEventListener('click', async e => {
+  e.target.disabled = true;
+  await renderImages(galleryRef, searchQuery, ++currentPage);
+
+  gallery.refresh();
+
+  scrollPageToElm(galleryRef);
+  e.target.disabled = false;
+});
+
+function getInputData(formRef) {
+  const { searchQuery } = formRef.elements;
+  const inputValue = searchQuery.value.trim();
+  if (inputValue) {
+    return inputValue;
+  } else {
+    Notiflix.Notify.failure("The search query can't be empty");
+    return null;
+  }
+}
+
+function scrollPageToElm(elementRef) {
+  const { height: cardHeight } =
+    elementRef.firstElementChild.getBoundingClientRect();
+
+  window.scrollBy({
+    top: cardHeight * 2,
+    behavior: 'smooth',
+  });
+}
+
+function toggleLoadBtn(elementRef) {
+  elementRef.classList.toggle('hidden');
+}
+
+async function renderImages(galleryRef, searchQuery, currentPage) {
+  try {
+    const { hits, totalHits } = await getImages(searchQuery, currentPage);
+
+    if (totalHits === 0) {
+      Notiflix.Notify.failure(
+        'Sorry, there are no images matching your search query. Please try again.'
+      );
+    } else {
+      addImages(hits, galleryRef);
+
+      if (currentPage === Math.ceil(totalHits / hits.length)) {
+        Notiflix.Notify.info(
+          "We're sorry, but you've reached the end of search results."
+        );
+        observer.unobserve(galleryRef.lastElementChild);
+        toggleLoadBtn(loadBtnRef);
+      } else if (currentPage > 1) {
+        Notiflix.Notify.info(
+          `Hooray! We found ${currentPage * hits.length} images.`
+        );
+      }
     }
-  }, DEBOUNCE_DELAY)
-);
+  } catch (error) {
+    console.log(error);
+  }
+}

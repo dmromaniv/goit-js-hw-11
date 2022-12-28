@@ -76,14 +76,18 @@ body {
 
 .info {
   display: flex;
-  justify-content: center;
-  align-items: center;
+  justify-content: space-around;
 
   padding: 5px;
 
   border: 1px solid rgb(124, 186, 193);
   border-radius: 3px;
   border-top: none;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
 }
 
 .hidden {

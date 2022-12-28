@@ -16,19 +16,19 @@ export function addImages(images = [], parentRef) {
         <div class="info">
           <p class="info-item">
             <b>Likes</b>
-            ${likes}
+            <span>${likes}</span>
           </p>
           <p class="info-item">
             <b>Views</b>
-             ${views}
+             <span>${views}</span>
           </p>
           <p class="info-item">
             <b>Comments</b>
-            ${comments}
+            <span>${comments}</span>
           </p>
           <p class="info-item">
             <b>Downloads</b>
-            ${downloads}
+            <span>${downloads}</span>
           </p>
         </div>
       </div>`;

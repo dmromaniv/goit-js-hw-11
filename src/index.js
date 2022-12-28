@@ -10,7 +10,8 @@ const searchFormRef = document.querySelector('.search-form');
 const loadBtnRef = document.querySelector('.load-more');
 
 let gallery = new SimpleLightbox('.gallery a');
-let observer = new IntersectionObserver(callback, {
+
+let observer = new IntersectionObserver(getImagesByScroll, {
   root: null,
   rootMargin: '0px',
   threshold: 0.2,
@@ -19,40 +20,24 @@ let observer = new IntersectionObserver(callback, {
 let searchQuery = null;
 let currentPage = 1;
 
-// !add test for last element
-async function callback(entries, observer) {
+async function getImagesByScroll(entries, observer) {
   if (entries[0].isIntersecting) {
     observer.unobserve(entries[0].target);
     await renderImages(galleryRef, searchQuery, ++currentPage);
   }
-  observer.observe(galleryRef.lastElementChild);
 }
 
 searchFormRef.addEventListener('submit', async e => {
   e.preventDefault();
-  loadBtnRef.classList.add('hidden');
+  // loadBtnRef.classList.add('hidden');
   currentPage = 1;
   galleryRef.innerHTML = '';
   searchQuery = getInputData(e.currentTarget);
   if (searchQuery) {
     await renderImages(galleryRef, searchQuery, currentPage);
-    gallery.refresh();
-
-    observer.observe(galleryRef.lastElementChild);
-
-    loadBtnRef.classList.remove('hidden');
+    // loadBtnRef.classList.remove('hidden');
     searchFormRef.reset();
   }
-});
-
-loadBtnRef.addEventListener('click', async e => {
-  e.target.disabled = true;
-  await renderImages(galleryRef, searchQuery, ++currentPage);
-
-  gallery.refresh();
-
-  scrollPageToElm(galleryRef);
-  e.target.disabled = false;
 });
 
 function getInputData(formRef) {
@@ -66,20 +51,6 @@ function getInputData(formRef) {
   }
 }
 
-function scrollPageToElm(elementRef) {
-  const { height: cardHeight } =
-    elementRef.firstElementChild.getBoundingClientRect();
-
-  window.scrollBy({
-    top: cardHeight * 2,
-    behavior: 'smooth',
-  });
-}
-
-function toggleLoadBtn(elementRef) {
-  elementRef.classList.toggle('hidden');
-}
-
 async function renderImages(galleryRef, searchQuery, currentPage) {
   try {
     const { hits, totalHits } = await getImages(searchQuery, currentPage);
@@ -90,13 +61,15 @@ async function renderImages(galleryRef, searchQuery, currentPage) {
       );
     } else {
       addImages(hits, galleryRef);
+      gallery.refresh();
+      observer.observe(galleryRef.lastElementChild);
 
       if (currentPage === Math.ceil(totalHits / hits.length)) {
+        observer.unobserve(galleryRef.lastElementChild);
         Notiflix.Notify.info(
           "We're sorry, but you've reached the end of search results."
         );
-        observer.unobserve(galleryRef.lastElementChild);
-        toggleLoadBtn(loadBtnRef);
+        // toggleLoadBtn(loadBtnRef);
       } else if (currentPage > 1) {
         Notiflix.Notify.info(
           `Hooray! We found ${currentPage * hits.length} images.`
@@ -107,3 +80,27 @@ async function renderImages(galleryRef, searchQuery, currentPage) {
     console.log(error);
   }
 }
+
+// function scrollPageToElm(elementRef) {
+//   const { height: cardHeight } =
+//     elementRef.firstElementChild.getBoundingClientRect();
+
+//   window.scrollBy({
+//     top: cardHeight * 2,
+//     behavior: 'smooth',
+//   });
+// }
+
+// function toggleLoadBtn(elementRef) {
+//   elementRef.classList.toggle('hidden');
+// }
+
+// loadBtnRef.addEventListener('click', async e => {
+//   e.target.disabled = true;
+//   await renderImages(galleryRef, searchQuery, ++currentPage);
+
+//   gallery.refresh();
+
+//   scrollPageToElm(galleryRef);
+//   e.target.disabled = false;
+// });
